@@ -128,6 +128,27 @@ void instructions(){
   server.send(200, "text/html", content); 
 }
 
+void updateHighScore(int score){
+  char unarray[loggedInUn.length()+1];
+  int arrayln = loggedInUn.length()+1;
+  loggedInUn.toCharArray(unarray, arrayln);
+
+  if (ubidots.get("HighScores", unarray) != ERROR_VALUE){
+    int currScore = static_cast< int > (ubidots.get("HighScores", unarray));
+      if(score > currScore){
+        ubidots.add(unarray, static_cast< float > (score));
+        ubidots.send("HighScores", unarray);
+        Serial.println("Updated");
+      }else{
+        Serial.println("Smaller");
+      }
+  }else{
+    ubidots.add(unarray, static_cast< float > (score));
+    ubidots.send("HighScores", unarray);
+    Serial.println("High score initialized");
+  }
+}
+
 void setup(void) {
   //Initialization of values and setting of pins.
   WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);
