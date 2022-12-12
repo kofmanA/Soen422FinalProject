@@ -6,31 +6,52 @@
 #include "soc/soc.h"
 #include "soc/rtc_cntl_reg.h"
 
+//Libraries for OLED Display
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+
 //Can ctrl+F TODO1 to find where the code must be implemented.
 //TODO1: Integrate the microphone into the start of the game (needs to read a value before the game starts).
 //TODO2: Implement the buzzer (make a short noise every time the user inputs and a long noise when the game has finished. Can also make a beep for each light turning on during the startup animation).
 //TODO3: Implement printing to the TTGO ex. While waiting for the user to log in, print "Find instructions at 172....", at the end of the game display their score as well as their high score.
 
+//OLED pins
+#define OLED_SDA 4
+#define OLED_SCL 15 
+#define OLED_RST 16
+#define SCREEN_WIDTH 128 // OLED display width, in pixels
+#define SCREEN_HEIGHT 64 // OLED display height, in pixels
+
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RST);
 
 //Pins for LEDs and Buttons.
-int redLEDPin = 15;
+
+//OLD PINS
+//int redLEDPin = 15;
+//int yellowButtonPin = 16;
+
+int redLEDPin = 5;
+int yellowButtonPin = 19;
+
 int yellowLEDPin = 17;
 int greenLEDPin = 21;
 int blueLEDPin = 14;
 int redButtonPin = 2;
-int yellowButtonPin = 16;
+
 int greenButtonPin = 13;
 int blueButtonPin = 12;
+
 
 //Login information to connect to wifi.
 
 // Alex's Hotspot
-// char* ssid = "SM-A715W4482";
-// const char* password = "zbuh9672";
+char* ssid = "SM-A715W4482";
+const char* password = "zbuh9672";
 
 //Max's Login information to connect to wifi.
-char* ssid = "Can you see me";
-const char* password = "testtest";
+// char* ssid = "Can you see me";
+// const char* password = "testtest";
 
 //Score float initialized to 0.0.
 float score = 0.0;
@@ -213,6 +234,28 @@ void setup(void) {
   Serial.begin(115200);
   Serial.println(ssid);
   Serial.println(password);
+
+  //reset OLED display via software
+  pinMode(OLED_RST, OUTPUT);
+  digitalWrite(OLED_RST, LOW);
+  delay(20);
+  digitalWrite(OLED_RST, HIGH);
+  
+
+  //initialize OLED
+  Wire.begin(OLED_SDA, OLED_SCL);
+  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3c, false, false)) { // Address 0x3C for 128x32
+    Serial.println(F("SSD1306 allocation failed"));
+    while(true); // Don't proceed, loop forever
+  }
+
+  // Default Message
+  display.clearDisplay();
+  display.setTextColor(WHITE);
+  display.setTextSize(2);
+  display.setCursor(0,0);
+  display.print("Simon Game");
+  display.display();
   
   //Set LED pins to OUTPUT and set them to LOW.
   pinMode(redLEDPin, OUTPUT);
@@ -263,6 +306,7 @@ void loop(void) {
 
   //We loop until a user has signaled that they are ready to play by 1. Logging in and 2. Making sound near the microphone to start it.
   while( loggedInUn == ""){ //TODO1: 
+    
     ArduinoOTA.handle();
     server.handleClient();
     delay(2);
@@ -301,6 +345,16 @@ void initializeGame(){
 void displayLevel(){
   Serial.println("displayLevel()");
   Serial.print("Here is level: ");
+
+  // DISPLAY LEVEL TTGO SCREEN
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.setTextSize(3);
+  display.print("Score: ");
+  display.println(level);
+  display.setCursor(0,20);
+  display.display();  
+  
   Serial.println(level);
   userInputCount = 0;
   for(int i=0; i<level; i++){
@@ -334,31 +388,44 @@ void readUserInput(){
   Serial.println("readUserInput()");
 
   //Runs until a user has enterred a value. userInputCount is incremented so that the while loop which called this function can stop after the user has input the correct amount of values for this level.
+  //Light sequence indicating the start of a game.
+  // RED = 1
+  // GREEN = 2
+  // YELLOW = 3
+  // BLUE = 4
   while(!enterred){
     if(digitalRead(redButtonPin)){
       userInput[userInputCount] = 1;
       userInputCount++;
       enterred = true;
-      Serial.println("Red Button");
+      digitalWrite(redLEDPin, HIGH);
       delay(250);
+      digitalWrite(redLEDPin, LOW);
+      Serial.println("Red Button");
     }else if(digitalRead(greenButtonPin)){
       userInput[userInputCount] = 2;
       userInputCount++;
       enterred = true;
-      Serial.println("Green Button");
+      digitalWrite(greenLEDPin, HIGH);
       delay(250);
+      digitalWrite(greenLEDPin, LOW);
+      Serial.println("Green Button");
     }else if(digitalRead(yellowButtonPin)){
       userInput[userInputCount] = 3;
       userInputCount++;
       enterred = true;
-      Serial.println("yellow Button");
+      digitalWrite(yellowLEDPin, HIGH);
       delay(250);
+      digitalWrite(yellowLEDPin, LOW);
+      Serial.println("yellow Button");
     }else if(digitalRead(blueButtonPin)){
       userInput[userInputCount] = 4;
       userInputCount++;
       enterred = true;
-      Serial.println("Blue Button");
+      digitalWrite(blueLEDPin, HIGH);
       delay(250);
+      digitalWrite(blueLEDPin, LOW);
+      Serial.println("Blue Button");
     }
   }
   
@@ -394,6 +461,13 @@ bool verifyEntries(){
 
   //If the user input valid values, increment the level by 1.
   if(valid){
+    display.clearDisplay();
+    display.setCursor(0,0);
+    display.println("Level ");
+    display.println(level); 
+    display.setCursor(0,20);
+    display.setTextSize(1.5);
+    display.display(); 
     level++ ;
   }
 
