@@ -33,21 +33,28 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RST);
 
 int redLEDPin = 5;
 int yellowButtonPin = 19;
-
 int yellowLEDPin = 17;
 int greenLEDPin = 21;
 int blueLEDPin = 14;
 int redButtonPin = 2;
-
 int greenButtonPin = 13;
 int blueButtonPin = 12;
+
+int micDigitalOut = 0;
+int micAnalogOut = 37;
+
+
+int buzzerPin = 27;
+
+int currentUserHighScore = 0;
+
 
 
 //Login information to connect to wifi.
 
 // Alex's Hotspot
-char* ssid = "SM-A715W4482";
-const char* password = "zbuh9672";
+char* ssid = "Perlman Residence";
+const char* password = "18160466";
 
 //Max's Login information to connect to wifi.
 // char* ssid = "Can you see me";
@@ -101,7 +108,7 @@ void signUp(){
     int arrayln = thisun.length()+1;
     server.arg("USERNAME").toCharArray(unarray, arrayln);
     //Check if the name already exists, if it doesn't, create a new user with a default difficulty of 1.0.
-    if(ubidots.get("users", unarray) != ERROR_VALUE){
+    if(ubidots.get("users", unarray) == ERROR_VALUE){
       ubidots.add(unarray, 1.0);
       ubidots.send("users", unarray);
       loggedInUn = thisun;
@@ -211,13 +218,15 @@ void updateHighScore(int score){
 
   //If there is already a high score for this player, enter this block to see if it can be replaced.
   if (ubidots.get("HighScores", unarray) != ERROR_VALUE){
-    int currScore = static_cast< int > (ubidots.get("HighScores", unarray));
+      int currScore = static_cast< int > (ubidots.get("HighScores", unarray));   
       //If the score of the game is higher than the score currently on ubidots, it gets updated.
       if(score > currScore){
+         currentUserHighScore = score;
         ubidots.add(unarray, static_cast< float > (score));
         ubidots.send("HighScores", unarray);
         Serial.println("Updated");
       }else{
+        currentUserHighScore = currScore;
         Serial.println("Smaller");
       }
   }else{
@@ -226,6 +235,7 @@ void updateHighScore(int score){
     ubidots.send("HighScores", unarray);
     Serial.println("High score initialized");
   }
+  Serial.println();
 }
 
 void setup(void) {
@@ -241,7 +251,6 @@ void setup(void) {
   delay(20);
   digitalWrite(OLED_RST, HIGH);
   
-
   //initialize OLED
   Wire.begin(OLED_SDA, OLED_SCL);
   if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3c, false, false)) { // Address 0x3C for 128x32
@@ -272,6 +281,8 @@ void setup(void) {
   pinMode(yellowButtonPin, INPUT);
   pinMode(greenButtonPin, INPUT);
   pinMode(blueButtonPin, INPUT);
+
+  pinMode(buzzerPin, OUTPUT);
   
   //Set the wifi mode to station and then log in to wifi using wifi.begin. We will print the status of the wifi until the wifi is connected.
   WiFi.mode(WIFI_STA);
@@ -304,33 +315,84 @@ void setup(void) {
 //The loop that runs for the game once the setup is complete.
 void loop(void) {
 
+  // Default Message
+  display.clearDisplay();
+  display.setTextColor(WHITE);
+  display.setTextSize(1.9);
+  display.setCursor(0,0);
+  display.print("Simon Game");
+  display.setCursor(0,20);
+  display.print("http://");    
+  display.print(WiFi.localIP());  
+  display.display();
+  
+  int micGameStart = 0;
+  //  int mic_digital;
+  int mic_analog;
+  bool endWhileLoop = false;
   //We loop until a user has signaled that they are ready to play by 1. Logging in and 2. Making sound near the microphone to start it.
-  while( loggedInUn == ""){ //TODO1: 
-    
+  while(!endWhileLoop){ //TODO1:       
+    if(micGameStart != 0){
+      if(loggedInUn != "" ) {
+        endWhileLoop = true;   
+      }      
+    }
+      
+    mic_analog = analogRead(micAnalogOut);            
+
+    if(mic_analog >= 80 ) {
+      if(loggedInUn != ""){
+        Serial.print("SOUND MADE ");
+        Serial.println(mic_analog);      
+        micGameStart = 1;        
+      }
+    }
     ArduinoOTA.handle();
     server.handleClient();
     delay(2);
   }
+  if(micGameStart == 1){
+    
+    Serial.print("Mic Game STart?: ");
+    Serial.println(micGameStart);
+    Serial.print("Logged In User:");
+    Serial.println(loggedInUn);
+    
+    //Before the user starts playing, the game is initialized.
+    Serial.println("Initializing game");
+    initializeGame();
 
-  //Before the user starts playing, the game is initialized.
-  Serial.println("Initializing game");
-  initializeGame();
+    //Print the entire sequence of lights to the Serial Monitor for debugging purposes.
+    for(int i= 0; i<25; i++){
+      Serial.println(levels[i]);
+    }
 
-  //Print the entire sequence of lights to the Serial Monitor for debugging purposes.
-  for(int i= 0; i<25; i++){
-    Serial.println(levels[i]);
-  }
+    //Once the game has been initialized, we can start playing it.
+    Serial.println("playing game");
+    playGame();
 
-  //Once the game has been initialized, we can start playing it.
-  Serial.println("playing game");
-  playGame();
+    //Once the game has finished, update the high score based on the level that the user got to.
+    updateHighScore(level);
 
-  //Once the game has finished, update the high score based on the level that the user got to.
-  updateHighScore(level);
-  delay(1000);
-  level = 1;
-
+    
+      //Display Game over
+    display.clearDisplay();
+    display.setTextSize(1.5);
+    display.setCursor(0,0);
+    display.println("Game Over :(");
+    display.setCursor(0,20);
+    display.print("Your Score: ");
+    display.print(level);
+    display.setCursor(0,40);
+    display.print(loggedInUn);
+    display.print("Your High Score: ");
+    display.print(currentUserHighScore);  
+    display.setCursor(0,0);
+    display.display();
+    delay(7000);    
+    level = 1;  
   
+  }
 }
 
 //Randomly initialize the levels of the game.
@@ -350,7 +412,7 @@ void displayLevel(){
   display.clearDisplay();
   display.setCursor(0,0);
   display.setTextSize(3);
-  display.print("Score: ");
+  display.print("Level: ");
   display.println(level);
   display.setCursor(0,20);
   display.display();  
@@ -469,8 +531,7 @@ bool verifyEntries(){
     display.setTextSize(1.5);
     display.display(); 
     level++ ;
-  }
-
+  }  
   return valid;
 }
 
@@ -480,9 +541,12 @@ void playGame(){
 
   //Light sequence indicating the start of a game.
   digitalWrite(redLEDPin, HIGH);
+  
   delay(500);
   digitalWrite(yellowLEDPin, HIGH);
+  digitalWrite(buzzerPin,HIGH);
   delay(500);
+  digitalWrite(buzzerPin,LOW);
   digitalWrite(blueLEDPin, HIGH);
   delay(500);
   digitalWrite(greenLEDPin, HIGH);
@@ -500,5 +564,5 @@ void playGame(){
     playLevel();
     correctInput = verifyEntries();
   }
-  
+
 }

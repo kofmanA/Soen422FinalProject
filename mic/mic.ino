@@ -24,12 +24,13 @@ void loop(){
   int val_digital = digitalRead(sound_digital);
   int val_analog = analogRead(sound_analog);
 
-  Serial.print(val_analog);
-  Serial.print("\n");
-  Serial.println(val_digital);
+  // Serial.print(val_analog);
+  // Serial.print("\n");
+  // Serial.println(val_digital);
 
-  if ( val_analog >= 30 ) // checking if the analog value is over 2165 (decibels i think?)
+  if ( val_analog >= 70 ) // checking if the analog value is over 2165 (decibels i think?)
   {
+    Serial.print(val_analog);    
     digitalWrite (LED_BUILTIN, HIGH);
     Serial.println("Game started!");
   }
