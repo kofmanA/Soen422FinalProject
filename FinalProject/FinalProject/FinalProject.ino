@@ -53,12 +53,12 @@ int currentUserHighScore = 0;
 //Login information to connect to wifi.
 
 // Alex's Hotspot
-char* ssid = "Perlman Residence";
-const char* password = "18160466";
+// char* ssid = "Perlman Residence";
+// const char* password = "18160466";
 
 //Max's Login information to connect to wifi.
-// char* ssid = "Can you see me";
-// const char* password = "testtest";
+char* ssid = "Can you see me";
+const char* password = "testtest";
 
 //Score float initialized to 0.0.
 float score = 0.0;
