@@ -12,7 +12,6 @@
 #include <Adafruit_SSD1306.h>
 
 //Can ctrl+F TODO1 to find where the code must be implemented.
-//TODO1: Integrate the microphone into the start of the game (needs to read a value before the game starts).
 //TODO2: Implement the buzzer (make a short noise every time the user inputs and a long noise when the game has finished. Can also make a beep for each light turning on during the startup animation).
 //TODO3: Implement printing to the TTGO ex. While waiting for the user to log in, print "Find instructions at 172....", at the end of the game display their score as well as their high score.
 
@@ -53,8 +52,8 @@ int currentUserHighScore = 0;
 //Login information to connect to wifi.
 
 // Alex's Hotspot
-// char* ssid = "Perlman Residence";
-// const char* password = "18160466";
+// char* ssid = "Can you see me";
+// const char* password = "testtest";
 
 //Max's Login information to connect to wifi.
 char* ssid = "Can you see me";
@@ -64,7 +63,7 @@ const char* password = "testtest";
 float score = 0.0;
 
 //Creation of difficulty global variable.
-float difficulty;
+int difficulty;
 
 //Set default variable level to 1.
 int level = 1;
@@ -178,7 +177,7 @@ void setDifficultyUbidots(){
     setDifficultyGame();
   }
   //Html that is returned if the user would like to create another user profile.
-  String content = "<html><body><form action='/setDifficultyUbidots' method='POST'>Enter your preferred diffculty level below:<br>";
+  String content = "<html><body><form action='/difficulty' method='POST'>Enter your preferred diffculty level below:<br>";
   content += "Difficulty (1-3):<input type='text' name='Difficulty' placeholder='Difficulty Level'><br>";
   content += "<input type='submit' name='NewUser' value='Submit'></form>" + msg + "<br>";
   server.send(200, "text/html", content);
@@ -190,7 +189,7 @@ void setDifficultyGame(){
   char unarray[loggedInUn.length()+1];
   int arrayln = loggedInUn.length()+1;
   loggedInUn.toCharArray(unarray, arrayln);
-   difficulty = ubidots.get("users", unarray);
+  difficulty = static_cast<int>(ubidots.get("users", unarray));
 }
 
 
@@ -282,7 +281,6 @@ void setup(void) {
   pinMode(greenButtonPin, INPUT);
   pinMode(blueButtonPin, INPUT);
 
-  pinMode(buzzerPin, OUTPUT);
   
   //Set the wifi mode to station and then log in to wifi using wifi.begin. We will print the status of the wifi until the wifi is connected.
   WiFi.mode(WIFI_STA);
@@ -416,29 +414,38 @@ void displayLevel(){
   display.println(level);
   display.setCursor(0,20);
   display.display();  
-  
+  Serial.print("Difficulty value: ");
+  Serial.println(difficulty);
   Serial.println(level);
   userInputCount = 0;
   for(int i=0; i<level; i++){
     if(levels[i]==1){
+      tone(buzzerPin, 31, 1000/difficulty);
       digitalWrite(redLEDPin, HIGH);
-      delay(1000);
+      delay(1000/difficulty);
       digitalWrite(redLEDPin, LOW);
+      noTone(buzzerPin);
       delay(100);
     }else if(levels[i] == 2){
+      tone(buzzerPin, 247, 1000/difficulty);
       digitalWrite(greenLEDPin, HIGH);
-      delay(1000);
+      delay(1000/difficulty);
       digitalWrite(greenLEDPin, LOW);
+      noTone(buzzerPin);
       delay(100);
     }else if(levels[i] == 3){
+      tone(buzzerPin, 1175, 1000/difficulty);
       digitalWrite(yellowLEDPin, HIGH);
-      delay(1000);
+      delay(1000/difficulty);
       digitalWrite(yellowLEDPin, LOW);
+      noTone(buzzerPin);
       delay(100);
     }else{
+      tone(buzzerPin, 1480, 1000/difficulty);
       digitalWrite(blueLEDPin, HIGH);
-      delay(1000);
+      delay(1000/difficulty);
       digitalWrite(blueLEDPin, LOW);
+      noTone(buzzerPin);
       delay(100);
     }  
   }
@@ -460,33 +467,41 @@ void readUserInput(){
       userInput[userInputCount] = 1;
       userInputCount++;
       enterred = true;
+      tone(buzzerPin, 31, 250);
       digitalWrite(redLEDPin, HIGH);
       delay(250);
       digitalWrite(redLEDPin, LOW);
+      noTone(buzzerPin);
       Serial.println("Red Button");
     }else if(digitalRead(greenButtonPin)){
       userInput[userInputCount] = 2;
       userInputCount++;
       enterred = true;
+      tone(buzzerPin, 247, 250);
       digitalWrite(greenLEDPin, HIGH);
       delay(250);
       digitalWrite(greenLEDPin, LOW);
+      noTone(buzzerPin);
       Serial.println("Green Button");
     }else if(digitalRead(yellowButtonPin)){
       userInput[userInputCount] = 3;
       userInputCount++;
       enterred = true;
+      tone(buzzerPin, 1175, 250);
       digitalWrite(yellowLEDPin, HIGH);
       delay(250);
       digitalWrite(yellowLEDPin, LOW);
+      noTone(buzzerPin);
       Serial.println("yellow Button");
     }else if(digitalRead(blueButtonPin)){
       userInput[userInputCount] = 4;
       userInputCount++;
       enterred = true;
+      tone(buzzerPin, 1480, 250);
       digitalWrite(blueLEDPin, HIGH);
       delay(250);
       digitalWrite(blueLEDPin, LOW);
+      noTone(buzzerPin);
       Serial.println("Blue Button");
     }
   }
@@ -505,7 +520,9 @@ void playLevel(){
     Serial.print("Level: ");
     Serial.println(level);
     readUserInput();
-  }  
+  }
+
+    delay(200);
 }
 
 //Function which verifies if the user correctly input the sequence of LEDs.
@@ -541,12 +558,9 @@ void playGame(){
 
   //Light sequence indicating the start of a game.
   digitalWrite(redLEDPin, HIGH);
-  
   delay(500);
   digitalWrite(yellowLEDPin, HIGH);
-  digitalWrite(buzzerPin,HIGH);
   delay(500);
-  digitalWrite(buzzerPin,LOW);
   digitalWrite(blueLEDPin, HIGH);
   delay(500);
   digitalWrite(greenLEDPin, HIGH);
